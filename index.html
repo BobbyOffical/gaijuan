@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网络阅卷系统 · 七年级上册数学</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--bg:#f3f4f6;
+  --blue:#1d4ed8;--red:#dc2626;--green:#15803d;--amber:#b45309;--dark:#111827;
+}
+body{font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);height:100vh;overflow:hidden;font-size:14px}
+button{font-family:inherit;cursor:pointer;border:none}
+.hand{font-family:"KaiTi","STKaiti","楷体","Kaiti SC","DFKai-SB",serif}
+
+/* ===== 客户端顶栏 ===== */
+.topbar{height:44px;background:var(--dark);color:#fff;display:flex;align-items:center;gap:16px;padding:0 14px;font-size:13px}
+.topbar .brand{font-weight:700;font-size:14px;letter-spacing:.5px}
+.topbar .brand i{color:#60a5fa;font-style:normal}
+.topbar .chip{background:#1f2937;border:1px solid #374151;border-radius:4px;padding:2px 9px;color:#d1d5db;font-size:12px}
+.topbar .chip b{color:#fff}
+.topbar .sp{flex:1}
+.topbar .clock{color:#9ca3af;font-variant-numeric:tabular-nums}
+
+/* ===== 任务条 ===== */
+.taskbar{height:38px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 14px;gap:12px;font-size:12.5px;color:var(--muted)}
+.taskbar .prog{flex:1;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;max-width:420px}
+.taskbar .prog i{display:block;height:100%;background:linear-gradient(90deg,#2563eb,#3b82f6);width:0;transition:width .25s}
+.taskbar b{color:var(--dark)}
+.taskbar .mode{border:1px solid var(--line);border-radius:4px;padding:2px 8px;background:#f9fafb}
+.taskbar .mode.dual{border-color:#fca5a5;background:#fef2f2;color:#b91c1c}
+
+/* ===== 屏幕 ===== */
+.screen{height:calc(100vh - 82px);overflow:auto}
+#setup{display:block;padding:20px 0}
+.card{width:600px;max-width:94vw;margin:0 auto;background:#fff;border-radius:12px;border:1px solid var(--line);box-shadow:0 12px 40px rgba(17,24,39,.08);padding:28px 32px}
+.card h1{font-size:20px;margin-bottom:2px}
+.card .sub{color:var(--muted);font-size:13px;margin-bottom:22px}
+.f{margin-bottom:18px}
+.f>label{display:block;font-size:13px;font-weight:600;margin-bottom:7px}
+.f .hint{font-weight:400;color:var(--muted);font-size:11.5px;margin-left:5px}
+.seg{display:flex;gap:7px;flex-wrap:wrap}
+.seg button{padding:7px 14px;border-radius:6px;background:#f3f4f6;color:#4b5563;font-size:13px;border:1.5px solid transparent}
+.seg button.on{background:#eff6ff;color:var(--blue);border-color:#93c5fd;font-weight:600}
+input[type=number]{width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:6px;font-size:14px}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.go{width:100%;margin-top:8px;padding:12px;border-radius:8px;background:var(--blue);color:#fff;font-size:15px;font-weight:700}
+.go:hover{background:#1e40af}
+
+/* ===== 阅卷三栏 ===== */
+#grading{display:none}
+.gwrap{display:grid;grid-template-columns:186px 1fr 400px;height:calc(100vh - 82px)}
+.meta{background:#fff;border-right:1px solid var(--line);padding:12px;overflow:auto;font-size:12.5px}
+.meta .hd{font-weight:700;font-size:12px;color:var(--muted);letter-spacing:.5px;margin-bottom:8px;margin-top:4px}
+.meta .kv{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #f1f5f9}
+.meta .kv span{color:var(--muted)}
+.meta .kv b{font-variant-numeric:tabular-nums}
+.meta .stu{background:#f9fafb;border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:12px;text-align:center}
+.meta .stu .av{width:44px;height:44px;border-radius:50%;background:#e5e7eb;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.meta .stu .nm{font-weight:700;font-size:13px}
+.meta .stu .id{color:var(--muted);font-size:11px;margin-top:2px;font-variant-numeric:tabular-nums}
+.flag{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.flag button{padding:7px;border-radius:6px;background:#f3f4f6;color:#4b5563;font-size:12px;border:1px solid var(--line)}
+.flag button.on{background:#fef2f2;color:#b91c1c;border-color:#fca5a5;font-weight:600}
+
+.stage{background:#5b6472;padding:14px;overflow:auto;position:relative}
+.stage .tip{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(17,24,39,.75);color:#fff;font-size:11px;padding:3px 10px;border-radius:20px;z-index:5}
+.sheetwrap{position:relative;max-width:660px;margin:0 auto}
+#pen{position:absolute;left:0;top:0;z-index:8;cursor:crosshair;touch-action:none}
+.pentb{position:absolute;top:8px;right:10px;z-index:20;background:rgba(17,24,39,.88);border-radius:8px;padding:6px 7px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;max-width:520px}
+.pentb button{background:#374151;color:#e5e7eb;border-radius:5px;padding:4px 9px;font-size:12px}
+.pentb button:hover{background:#4b5563}
+.pentb button.on{background:var(--red);color:#fff}
+.pentb .sep{width:1px;height:18px;background:#4b5563;margin:0 3px}
+.pentb .sw{width:15px;height:15px;border-radius:4px;border:2px solid transparent;padding:0}
+.pentb .sw.on{border-color:#fff}
+.pentb .wd{width:22px;padding:4px 0;text-align:center;font-size:10px}
+.sheet{background:#fffdf7;max-width:660px;margin:0 auto;padding:26px 30px 34px;position:relative;
+  box-shadow:0 8px 30px rgba(0,0,0,.35);
+  background-image:linear-gradient(#eef0ee 1px,transparent 1px);background-size:100% 30px}
+.sheet::before,.sheet::after{content:"";position:absolute;left:8px;width:10px;height:10px;background:#111;border-radius:2px}
+.sheet::before{top:14px}.sheet::after{bottom:14px}
+.sheet .qtag{display:inline-block;border:1.5px solid #111;padding:1px 8px;font-size:13px;margin-bottom:10px}
+.sheet .stem{font-size:15px;line-height:1.8;color:#374151;margin-bottom:12px}
+.sheet .area{border:1px dashed #cbd5e1;border-radius:4px;padding:10px 12px;min-height:200px}
+.wl{font-size:21px;line-height:1.9;color:#1e3a8a;position:relative;white-space:pre-wrap;word-break:break-all}
+.wl .step{display:block;position:relative;padding-left:2px}
+.wl .step:nth-child(odd){transform:rotate(-.15deg)}
+.wl .step:nth-child(even){transform:rotate(.2deg)}
+.wl .cross{text-decoration:line-through;text-decoration-thickness:2px;opacity:.55}
+.wl .blot{display:inline-block;width:14px;height:8px;background:#1e3a8a;border-radius:50%;opacity:.5;vertical-align:middle;margin:0 3px}
+.wl .empty{color:#9ca3af;font-size:16px}
+.wl .scribble{background:#fde68a;padding:0 5px;border-radius:3px;color:#78350f}
+.wl .mk{position:absolute;right:-4px;top:-2px;font-size:22px;font-weight:700;color:var(--red);font-family:"KaiTi",serif}
+.stamp{position:absolute;right:26px;bottom:20px;border:3px solid var(--red);color:var(--red);border-radius:6px;
+  padding:4px 12px;font-size:26px;font-weight:800;font-family:"KaiTi",serif;transform:rotate(-6deg);opacity:.9}
+.stamp small{font-size:13px;font-weight:400}
+
+.score{background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;padding:10px;font-size:13px;background:#f9fafb;color:var(--muted)}
+.tabs button.on{background:#fff;color:var(--blue);font-weight:700;border-bottom:2.5px solid var(--blue)}
+.sbody{flex:1;overflow:auto;padding:14px}
+.head{background:#f9fafb;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.head .big{font-size:28px;font-weight:800;color:var(--blue);font-variant-numeric:tabular-nums;line-height:1}
+.head .big small{font-size:13px;color:var(--muted);font-weight:400}
+.head .rt{text-align:right;font-size:11.5px;color:var(--muted)}
+.head .rt .diff{font-weight:700;font-size:13px}
+.head .rt .diff.warn{color:var(--red)}
+.pt{border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px;transition:border-color .15s}
+.pt.cur{border-color:#93c5fd;box-shadow:0 0 0 3px #eff6ff}
+.pt .t{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:5px}
+.pt .t .fv{color:var(--amber);font-weight:700}
+.pt .d{font-size:13.5px;line-height:1.6;margin-bottom:9px}
+.pt .ms{display:flex;gap:6px}
+.pt .ms button{flex:1;padding:6px 0;border-radius:6px;font-size:12.5px;font-weight:600;background:#f3f4f6;color:#6b7280;border:1.5px solid transparent}
+.pt .ms .f.on{background:#dcfce7;color:var(--green);border-color:#86efac}
+.pt .ms .h.on{background:#fef3c7;color:var(--amber);border-color:#fcd34d}
+.pt .ms .z.on{background:#fee2e2;color:var(--red);border-color:#fca5a5}
+.pt .ans{margin-top:8px;font-size:12px;color:var(--muted);background:#f9fafb;border-radius:6px;padding:6px 8px;line-height:1.6;display:none}
+.pt.showans .ans{display:block}
+.pt.showans .ans em{color:var(--green);font-style:normal;font-weight:600}
+.std .it{background:#f9fafb;border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:9px;font-size:13px;line-height:1.6}
+.std .it .sc{float:right;background:var(--green);color:#fff;font-size:11px;padding:1px 7px;border-radius:9px;margin-left:8px}
+.std .it .k{font-weight:600;margin-bottom:3px}
+.std .it .v{color:#374151}
+
+.ops{height:56px;background:#fff;border-top:1px solid var(--line);display:flex;align-items:center;padding:0 14px;gap:10px}
+.ops .keys{font-size:11.5px;color:#9ca3af}
+.ops .keys kbd{background:#f3f4f6;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 5px;font-family:ui-monospace,monospace;font-size:11px;color:#4b5563}
+.ops .sp{flex:1}
+.ops button{padding:9px 18px;border-radius:7px;font-size:13.5px;font-weight:700}
+.ops .ghost{background:#f3f4f6;color:#4b5563;border:1px solid var(--line)}
+.ops .pri{background:var(--blue);color:#fff}
+.ops .pri:hover{background:#1e40af}
+.ops .warn{background:#fef3c7;color:var(--amber);border:1px solid #fcd34d}
+
+#result{display:none}
+.res .m{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.res .m div{background:#f9fafb;border:1px solid var(--line);border-radius:8px;padding:12px;text-align:center}
+.res .m .v{font-size:22px;font-weight:800;color:var(--blue);font-variant-numeric:tabular-nums}
+.res .m .l{font-size:11.5px;color:var(--muted);margin-top:3px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{padding:7px 8px;border-bottom:1px solid #f1f5f9;text-align:left}
+th{background:#f9fafb;color:var(--muted);font-size:11px;letter-spacing:.4px}
+td.n{font-variant-numeric:tabular-nums;font-weight:700}
+.tag{font-size:10.5px;padding:1px 6px;border-radius:9px;background:#eef2ff;color:#4338ca}
+.tag.w{background:#fef2f2;color:#b91c1c}
+.tag.g{background:#f0fdf4;color:var(--green)}
+.verdict{background:#f9fafb;border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:8px;padding:12px 14px;margin-bottom:18px;font-size:13.5px;line-height:1.7}
+.verdict b{color:var(--blue)}
+.drow{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:12.5px}
+.drow .dl{width:44px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.drow .dbar{flex:1;height:16px;background:#f3f4f6;border-radius:4px;overflow:hidden}
+.drow .dbar i{display:block;height:100%;background:linear-gradient(90deg,#3b82f6,#93c5fd);border-radius:4px}
+.drow .dc{width:48px;color:var(--muted);font-variant-numeric:tabular-nums}
+.again{display:flex;gap:10px;margin-top:18px}
+.again button{padding:11px 22px;border-radius:8px;font-weight:700;font-size:14px}
+.again .p{background:var(--blue);color:#fff}.again .s{background:#f3f4f6;color:#4b5563}
+
+.toast{position:fixed;bottom:74px;left:50%;transform:translateX(-50%);background:var(--dark);color:#fff;padding:9px 20px;border-radius:24px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:99}
+.toast.show{opacity:1}
+.toast.warn{background:#b91c1c}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">网络阅卷<i>客户端</i> v3.2</div>
+  <div class="chip">科目 <b>数学</b></div>
+  <div class="chip">年级 <b>七年级上册</b></div>
+  <div class="chip">题号 <b id="tQno">—</b></div>
+  <div class="chip">满分 <b id="tFull">—</b></div>
+  <div class="sp"></div>
+  <div class="clock" id="clock">00:00</div>
+</div>
+
+<div class="taskbar">
+  <span>评卷员 <b>T-2047</b></span>
+  <span>已批 <b id="tbDone">0</b> / <b id="tbTot">0</b> 份</span>
+  <div class="prog"><i id="tbBar"></i></div>
+  <span>剩余 <b id="tbLeft">0</b> 份</span>
+  <span class="mode" id="tbMode">单评</span>
+</div>
+
+<!-- 设置 -->
+<div class="screen" id="setup">
+  <div class="card">
+    <h1>七年级上册数学 · 网络阅卷模拟</h1>
+    <div class="sub">真实网络阅卷：每位评卷员只批<b>一道题</b>，系统连续派发这道题的不同学生卷，按评分细则逐点给分。</div>
+    <div class="f"><label>批改份数</label><div class="seg" id="sCount"></div>
+      <input type="number" id="customCount" min="1" max="300" placeholder="或自定义份数（1–300）" style="margin-top:7px"></div>
+    <div class="f"><label>批改题号 <span class="hint">选定后本任务只批这道题</span></label><div class="seg" id="sQno"></div></div>
+    <div class="r2">
+      <div class="f"><label>每题满分</label><div class="seg" id="sFull"></div></div>
+      <div class="f"><label>学生整体水平</label><div class="seg" id="sSkill"></div></div>
+    </div>
+    <div class="f"><label>评卷模式</label><div class="seg" id="sMode"></div></div>
+    <button class="go" onclick="start()">进入阅卷 ›</button>
+  </div>
+</div>
+
+<!-- 阅卷 -->
+<div class="screen" id="grading">
+  <div class="gwrap">
+    <div class="meta" id="meta"></div>
+    <div class="stage" id="stage">
+      <div class="tip" id="tip">扫描切图 · 卷面</div>
+      <div class="pentb" id="pentb">
+        <button class="on" data-tool="pen" onclick="penTool('pen',this)">✏️ 红笔</button>
+        <button data-tool="check" onclick="penTool('check',this)">✓ 对勾</button>
+        <button data-tool="cross" onclick="penTool('cross',this)">✗ 打叉</button>
+        <button data-tool="circle" onclick="penTool('circle',this)">⭕ 圈错</button>
+        <button data-tool="text" onclick="penTool('text',this)">T 批注</button>
+        <button data-tool="erase" onclick="penTool('erase',this)">🧹 擦</button>
+        <span class="sep"></span>
+        <button class="sw on" style="background:#dc2626" data-col="#dc2626" onclick="penColor(this)"></button>
+        <button class="sw" style="background:#1d4ed8" data-col="#1d4ed8" onclick="penColor(this)"></button>
+        <button class="sw" style="background:#15803d" data-col="#15803d" onclick="penColor(this)"></button>
+        <button class="sw" style="background:#111827" data-col="#111827" onclick="penColor(this)"></button>
+        <span class="sep"></span>
+        <button class="wd" data-w="2" onclick="penWidth(this)">细</button>
+        <button class="wd on" data-w="4" onclick="penWidth(this)">中</button>
+        <button class="wd" data-w="7" onclick="penWidth(this)">粗</button>
+        <span class="sep"></span>
+        <button onclick="undoInk()">↩ 撤销</button>
+        <button onclick="clearInk()">🗑 清空</button>
+      </div>
+      <div class="sheetwrap" id="sheetwrap">
+        <div class="sheet" id="sheet"></div>
+        <canvas id="pen"></canvas>
+      </div>
+    </div>
+    <div class="score">
+      <div class="tabs">
+        <button class="on" onclick="tab('p',this)">✏️ 评分点</button>
+        <button onclick="tab('s',this)">📖 参考答案</button>
+      </div>
+      <div class="sbody" id="sbody"></div>
+    </div>
+  </div>
+  <div class="ops">
+    <div class="keys">
+      <kbd>1</kbd>给分 <kbd>2</kbd>一半 <kbd>3</kbd>不给 · <kbd>↑↓</kbd>选点 · <kbd>Enter</kbd>提交并下一份 · <kbd>A</kbd>看答案 · <kbd>←→</kbd>翻卷
+    </div>
+    <div class="sp"></div>
+    <button class="ghost" onclick="prev()">上一份</button>
+    <button class="warn" onclick="markHard()">标记疑难</button>
+    <button class="pri" onclick="submit()">保存 · 下一份 ›</button>
+  </div>
+</div>
+
+<!-- 结果 -->
+<div class="screen" id="result">
+  <div class="card res">
+    <h1>阅卷任务完成</h1>
+    <div class="sub" id="rSub"></div>
+    <div class="verdict" id="rVerdict"></div>
+    <div class="m" id="rMetrics"></div>
+    <div id="rDist" style="margin-bottom:18px"></div>
+    <table><thead><tr><th>考生</th><th>班级</th><th>我的给分</th><th>标准分</th><th>差值</th><th>二评</th><th>状态</th></tr></thead>
+      <tbody id="rBody"></tbody></table>
+    <div class="again"><button class="p" onclick="location.reload()">再来一轮</button><button class="s" onclick="back()">改设置</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================== 七年级上册数学题库 ================== */
+const BANK = [
+  { no:17, topic:"有理数混合运算", stem:"计算：(−2)³ + |−6| × (−1/2) − (−3)²",
+    points:[
+      {s:"算出乘方 (−2)³ = −8", v:2, ok:"(−2)³ = −8", bad:"(−2)³ = 8"},
+      {s:"算出乘方 (−3)² = 9", v:2, ok:"(−3)² = 9", bad:"(−3)² = −9"},
+      {s:"绝对值与乘法 |−6|×(−1/2) = −3", v:3, ok:"|−6|×(−1/2) = 6×(−1/2) = −3", bad:"|−6|×(−1/2) = 3"},
+      {s:"按运算顺序合并 −8 + (−3) − 9", v:2, ok:"原式 = −8 + (−3) − 9", bad:"原式 = −8 − 3 + 9"},
+      {s:"得出结果 −20", v:3, ok:"= −20", bad:"= −2 或 = −14"},
+    ]},
+  { no:18, topic:"数轴与绝对值", stem:"已知 |a| = 5，|b| = 3，且 a > b，求 a + b 的值。",
+    points:[
+      {s:"由绝对值得 a = ±5", v:2, ok:"∵|a|=5 ∴a=5 或 a=−5", bad:"只写 a=5"},
+      {s:"由绝对值得 b = ±3", v:2, ok:"∵|b|=3 ∴b=3 或 b=−3", bad:"只写 b=3"},
+      {s:"用 a > b 筛选组合", v:3, ok:"∵a>b，排除 a=−5 的情况", bad:"未用条件筛选"},
+      {s:"确定 (a,b) = (5,3) 或 (5,−3)", v:3, ok:"a=5, b=3 或 a=5, b=−3", bad:"只取 a=5,b=3"},
+      {s:"分类求 a+b = 8 或 2", v:2, ok:"a+b = 8 或 a+b = 2", bad:"只答 a+b=8"},
+    ]},
+  { no:19, topic:"整式的加减（化简求值）", stem:"先化简，再求值：3(2a²b − ab²) − 2(3a²b − 2ab²)，其中 a = −1，b = 2。",
+    points:[
+      {s:"去括号（注意符号）", v:3, ok:"= 6a²b − 3ab² − 6a²b + 4ab²", bad:"= 6a²b − 3ab² − 6a²b − 4ab²"},
+      {s:"合并同类项得 ab²", v:3, ok:"= (6−6)a²b + (−3+4)ab² = ab²", bad:"= 2ab²"},
+      {s:"代入 a=−1, b=2", v:2, ok:"当 a=−1, b=2 时", bad:"代入 b=−2"},
+      {s:"算出 b² = 4", v:2, ok:"b² = 2² = 4", bad:"b² = 2"},
+      {s:"结果 −4", v:2, ok:"原式 = (−1)×4 = −4", bad:"= 4"},
+    ]},
+  { no:20, topic:"解一元一次方程（去分母）", stem:"解方程：(x − 1)/2 − (2x + 1)/3 = 1",
+    points:[
+      {s:"去分母，两边同乘 6", v:2, ok:"两边同乘 6，得 3(x−1) − 2(2x+1) = 6", bad:"右边漏乘：… = 1"},
+      {s:"去括号", v:3, ok:"3x − 3 − 4x − 2 = 6", bad:"3x − 3 − 4x + 2 = 6"},
+      {s:"移项合并 −x = 11", v:3, ok:"−x − 5 = 6 ⇒ −x = 11", bad:"−x = 1"},
+      {s:"系数化为 1", v:2, ok:"x = −11", bad:"x = 11"},
+    ]},
+  { no:21, topic:"一元一次方程应用（销售利润）", stem:"某商品按标价八折出售，每件仍可获利 20 元。已知该商品标价为 200 元，求这种商品的进价。",
+    points:[
+      {s:"设未知数", v:2, ok:"设这种商品的进价为 x 元", bad:"未设未知数"},
+      {s:"求售价", v:2, ok:"售价 = 200×80% = 160（元）", bad:"= 180 元"},
+      {s:"找等量关系列方程", v:3, ok:"160 − x = 20", bad:"x − 160 = 20"},
+      {s:"解方程", v:2, ok:"x = 160 − 20 = 140", bad:"x = 180"},
+      {s:"作答", v:1, ok:"答：这种商品的进价为 140 元。", bad:"未作答"},
+    ]},
+  { no:22, topic:"线段与中点", stem:"已知线段 AB = 10 cm，点 C 在线段 AB 上，且 AC = 4 cm。点 D 是线段 BC 的中点，求 AD 的长。",
+    points:[
+      {s:"求出 BC", v:3, ok:"BC = 10 − 4 = 6（cm）", bad:"BC = 14 cm"},
+      {s:"由中点得 CD", v:3, ok:"∵D 是 BC 中点 ∴CD = 3 cm", bad:"CD = 6 cm"},
+      {s:"正确组合 AD = AC + CD", v:2, ok:"AD = AC + CD = 4 + 3", bad:"AD = AC − CD"},
+      {s:"结果", v:2, ok:"AD = 7 cm", bad:"AD = 1 cm 或 13 cm"},
+    ]},
+  { no:23, topic:"余角与补角", stem:"一个角比它的余角大 20°，求这个角的度数。",
+    points:[
+      {s:"设未知数并表示余角", v:3, ok:"设这个角为 x°，则它的余角为 (90−x)°", bad:"余角写成 (180−x)°"},
+      {s:"列方程", v:3, ok:"由题意 x − (90 − x) = 20", bad:"x + (90−x) = 20"},
+      {s:"去括号合并", v:2, ok:"2x − 90 = 20", bad:"x − 90 − x = 20"},
+      {s:"解得", v:2, ok:"x = 55", bad:"x = 35 或 x = 70"},
+    ]},
+  { no:24, topic:"科学记数法", stem:"某市常住人口约为 18 760 000 人。请用科学记数法表示该人口数，并精确到 0.1×10⁷。",
+    points:[
+      {s:"确定 a 满足 1 ≤ |a| < 10", v:3, ok:"a = 1.876，满足 1≤a<10", bad:"a = 18.76"},
+      {s:"确定 n 的值", v:3, ok:"原数整数部分 8 位，n = 8 − 1 = 7", bad:"n = 6"},
+      {s:"写出科学记数法", v:2, ok:"18 760 000 = 1.876×10⁷", bad:"1.876×10⁶"},
+      {s:"按要求取近似值", v:2, ok:"精确到 0.1×10⁷ 得 1.9×10⁷", bad:"1.88×10⁷"},
+    ]},
+  { no:25, topic:"有理数应用（水位变化）", stem:"某水库上周日水位为 20 m。一周内每天水位变化（正为升，负为降）：+0.8，−0.5，+0.6，−0.4，+0.2，−0.7，+0.5（单位 m）。求本周最高水位与最低水位。",
+    points:[
+      {s:"逐日累加算出每天水位", v:3, ok:"周一20.8 周二20.3 周三20.9 周四20.5 周五20.7 周六20.0 周日20.5", bad:"只累加总变化量"},
+      {s:"各日计算基本无误", v:2, ok:"各日数值计算正确", bad:"20.9 算成 21.9"},
+      {s:"比较得最高水位", v:2, ok:"最高水位 = 周三 = 20.9 m", bad:"最高 20.8 m"},
+      {s:"比较得最低水位", v:2, ok:"最低水位 = 周六 = 20.0 m", bad:"最低 20.3 m"},
+      {s:"作答完整", v:1, ok:"答：最高 20.9 m，最低 20.0 m。", bad:"未作答"},
+    ]},
+  { no:26, topic:"同类项", stem:"若 3x²yⁿ 与 −2xᵐy³ 是同类项，求 m + n 的值，并写出合并后的结果。",
+    points:[
+      {s:"同类项条件：相同字母的指数分别相等", v:3, ok:"同类项要求 x 的指数相同且 y 的指数相同", bad:"只要字母相同即可"},
+      {s:"得 m = 2", v:2, ok:"m = 2", bad:"m = 3"},
+      {s:"得 n = 3", v:2, ok:"n = 3", bad:"n = 2"},
+      {s:"m + n = 5", v:2, ok:"m + n = 2 + 3 = 5", bad:"= 6"},
+      {s:"合并结果", v:3, ok:"3x²y³ − 2x²y³ = x²y³", bad:"= 5x²y³ 或 = x⁴y⁵"},
+    ]},
+];
+
+/* ================== 配置与状态 ================== */
+let CFG={count:10,qno:BANK[0].no,full:10,skill:"mid",dual:false};
+let sheets=[],cur=0,curQ=0,curP=0,tabMode="p",t0=0,timer=null;
+const RATE={good:.86,mid:.6,weak:.34};
+const SUR="王 李 张 刘 陈 杨 赵 黄 周 吴 徐 孙 马 朱 胡 郭 何 高 林 罗".split(" ");
+const GIV="伟 芳 娜 磊 静 敏 涛 杰 婷 明 丽 超 琳 斌 亮 峰 欢 翔 兰 强 雪 宇 悦 航 佳".split(" ");
+
+function seg(id,opts,def,cb){const el=document.getElementById(id);opts.forEach(o=>{const b=document.createElement("button");b.textContent=o.l;if(o.v===def)b.classList.add("on");b.onclick=()=>{[...el.children].forEach(c=>c.classList.remove("on"));b.classList.add("on");cb(o.v)};el.appendChild(b)})}
+seg("sCount",[{l:"5",v:5},{l:"10",v:10},{l:"20",v:20},{l:"40",v:40}],10,v=>CFG.count=v);
+seg("sQno",BANK.map(q=>({l:q.no+"题 "+q.topic,v:q.no})),BANK[0].no,v=>CFG.qno=v);
+seg("sFull",[{l:"8 分",v:8},{l:"10 分",v:10},{l:"12 分",v:12}],10,v=>CFG.full=v);
+seg("sSkill",[{l:"较好",v:"good"},{l:"中等",v:"mid"},{l:"较弱",v:"weak"}],"mid",v=>CFG.skill=v);
+seg("sMode",[{l:"单评",v:false},{l:"双评（含三评仲裁）",v:true}],false,v=>CFG.dual=v);
+document.getElementById("customCount").oninput=e=>{const v=parseInt(e.target.value);if(v>0){CFG.count=Math.min(300,v);[...document.getElementById("sCount").children].forEach(c=>c.classList.remove("on"))}};
+
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+/* ================== 生成学生卷（同一道题，不同学生） ================== */
+function gen(){
+  const r=RATE[CFG.skill];sheets=[];
+  const q=BANK.find(x=>x.no===CFG.qno);
+  const base=q.points.reduce((a,p)=>a+p.v,0);
+  for(let i=0;i<CFG.count;i++){
+    const nm=pick(SUR)+pick(GIV)+(Math.random()<.4?pick(GIV):"");
+    const correct=q.points.map((p,pi)=>Math.random()<r*(1-pi*.07));
+    const std=correct.reduce((a,c,pi)=>a+(c?q.points[pi].v:0),0);
+    const stdScore=Math.round(std/base*CFG.full*2)/2;
+    const second=CFG.dual?Math.max(0,Math.min(CFG.full,Math.round((stdScore+(Math.random()-.5)*CFG.full*.3)*2)/2)):null;
+    const it={q,correct,marks:q.points.map(()=>null),base,stdScore,second};
+    sheets.push({stu:nm,sid:"2024"+rnd(100000,999999),cls:rnd(1,12)+"班",seat:String(rnd(1,48)).padStart(2,"0"),qs:[it],hard:false,done:false,ink:[]});
+  }
+}
+
+/* ================== 红笔涂画 ================== */
+let penCtx=null, drawing=false, curStroke=null, penState={tool:"pen",col:"#dc2626",w:4}, penBound=false;
+function initPen(){
+  const cv=document.getElementById("pen");
+  penCtx=cv.getContext("2d");
+  if(penBound)return; penBound=true;
+  const pos=e=>{const r=cv.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top]};
+  cv.addEventListener("pointerdown",e=>{
+    e.preventDefault();cv.setPointerCapture(e.pointerId);
+    const [x,y]=pos(e);
+    if(penState.tool==="erase"){eraseAt(x,y);return}
+    if(penState.tool==="text"){const t=prompt("批注内容：","这里应有单位");if(t)addInk({t:"text",c:penState.col,x,y,txt:t});return}
+    if(penState.tool==="check"){addInk({t:"check",c:penState.col,x,y,s:26});return}
+    if(penState.tool==="cross"){addInk({t:"cross",c:penState.col,x,y,s:22});return}
+    drawing=true;
+    if(penState.tool==="circle")curStroke={t:"circle",c:penState.col,w:penState.w,x0:x,y0:y,x:x,y:y};
+    else curStroke={t:"pen",c:penState.col,w:penState.w,pts:[[x,y]]};
+  });
+  cv.addEventListener("pointermove",e=>{
+    if(!drawing||!curStroke)return;
+    const [x,y]=pos(e);
+    if(curStroke.t==="pen")curStroke.pts.push([x,y]);
+    else {curStroke.x=x;curStroke.y=y}
+    redrawInk();drawStroke(curStroke);
+  });
+  const end=e=>{
+    if(!drawing)return;drawing=false;
+    if(curStroke){
+      if(curStroke.t==="circle"&&Math.abs(curStroke.x-curStroke.x0)<6&&Math.abs(curStroke.y-curStroke.y0)<6){curStroke=null;redrawInk();return}
+      addInk(curStroke);curStroke=null;
+    }
+  };
+  cv.addEventListener("pointerup",end);cv.addEventListener("pointercancel",end);
+}
+function addInk(s){sheets[cur].ink.push(s);drawStroke(s)}
+function ink(){return sheets[cur]?sheets[cur].ink:[]}
+function drawStroke(s){
+  const g=penCtx;g.save();g.strokeStyle=s.c;g.fillStyle=s.c;g.lineCap="round";g.lineJoin="round";g.lineWidth=s.w||3;
+  if(s.t==="pen"){g.beginPath();s.pts.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.stroke()}
+  else if(s.t==="circle"){g.beginPath();g.ellipse((s.x0+s.x)/2,(s.y0+s.y)/2,Math.abs(s.x-s.x0)/2+8,Math.abs(s.y-s.y0)/2+8,0,0,Math.PI*2);g.stroke()}
+  else if(s.t==="check"){g.lineWidth=4;g.beginPath();g.moveTo(s.x-14,s.y+2);g.lineTo(s.x-4,s.y+12);g.lineTo(s.x+16,s.y-14);g.stroke()}
+  else if(s.t==="cross"){g.lineWidth=4;g.beginPath();g.moveTo(s.x-11,s.y-11);g.lineTo(s.x+11,s.y+11);g.moveTo(s.x+11,s.y-11);g.lineTo(s.x-11,s.y+11);g.stroke()}
+  else if(s.t==="text"){g.font="700 18px KaiTi,楷体,serif";g.fillText(s.txt,s.x,s.y)}
+  g.restore();
+}
+function redrawInk(){
+  const cv=document.getElementById("pen");
+  penCtx.clearRect(0,0,cv.width,cv.height);
+  ink().forEach(drawStroke);
+}
+function eraseAt(x,y){
+  const sh=sheets[cur];const R=14;
+  sh.ink=sh.ink.filter(s=>{
+    if(s.t==="pen")return !s.pts.some(([px,py])=>Math.hypot(px-x,py-y)<R);
+    const cx=s.x??(s.x0+s.x)/2, cy=s.y??(s.y0+s.y)/2;
+    return Math.hypot(cx-x,cy-y)>R+10;
+  });
+  redrawInk();
+}
+function undoInk(){sheets[cur].ink.pop();redrawInk()}
+function clearInk(){if(confirm("清空本卷所有红笔批注？")){sheets[cur].ink=[];redrawInk()}}
+function penTool(t,el){penState.tool=t;document.querySelectorAll('.pentb [data-tool]').forEach(b=>b.classList.remove("on"));el.classList.add("on")}
+function penColor(el){penState.col=el.dataset.col;document.querySelectorAll('.pentb .sw').forEach(b=>b.classList.remove("on"));el.classList.add("on")}
+function penWidth(el){penState.w=parseInt(el.dataset.w);document.querySelectorAll('.pentb .wd').forEach(b=>b.classList.remove("on"));el.classList.add("on")}
+function fitCanvas(){
+  const wrap=document.getElementById("sheetwrap"),cv=document.getElementById("pen");
+  if(!wrap||!cv)return;
+  const w=wrap.offsetWidth,h=wrap.offsetHeight;
+  cv.width=w;cv.height=h;cv.style.width=w+"px";cv.style.height=h+"px";
+  redrawInk();
+}
+window.addEventListener("resize",()=>{if(getComputedStyle(document.getElementById("grading")).display!=="none")fitCanvas()});
+
+/* ================== 卷面渲染 ================== */
+function renderSheet(){
+  const sh=sheets[cur],it=sh.qs[curQ],q=it.q;
+  let h=`<div class="qtag">${q.no}.（本题满分 ${CFG.full} 分）${q.topic}</div>`;
+  h+=`<div class="stem">${q.stem.replace(/\n/g,"<br>")}</div><div class="area"><div class="hand wl">`;
+  if(Math.random()<.85)h+=`<span class="step">${q.no===21||q.no===23?"解：":"原式 ="}</span>`;
+  q.points.forEach((p,pi)=>{
+    const ok=it.correct[pi];
+    const txt=ok?p.ok:p.bad;
+    const m=it.marks[pi];
+    const mk=m==="full"?'<span class="mk">√</span>':m==="part"?'<span class="mk">△</span>':m==="none"?'<span class="mk">×</span>':'';
+    if(!ok&&pi===q.points.length-1&&Math.random()<.3){h+=`<span class="step"><span class="empty">（此处未作答）</span>${mk}</span>`;return}
+    if(!ok&&Math.random()<.35){h+=`<span class="step"><span class="cross">${p.ok}</span>${mk}</span>`}
+    else if(Math.random()<.1){h+=`<span class="step"><span class="scribble">${txt}</span> ${mk}</span>`}
+    else{h+=`<span class="step">${txt}${pi<q.points.length-1?" ……":""}${mk}</span>`}
+    if(Math.random()<.06)h+=`<span class="blot"></span>`;
+  });
+  if(it.correct[q.points.length-1]&&Math.random()<.5)h+=`<span class="step">答：${q.points[q.points.length-1].ok}</span>`;
+  h+=`</div></div>`;
+  const got=sumScore(it);
+  if(got!==null)h+=`<div class="stamp">${got}<small> / ${CFG.full}</small></div>`;
+  document.getElementById("sheet").innerHTML=h;
+}
+function sumScore(it){
+  if(it.marks.some(m=>m===null))return null;
+  const sc=CFG.full/it.base;let g=0;
+  it.marks.forEach((m,pi)=>{if(m==="full")g+=it.q.points[pi].v*sc;else if(m==="part")g+=it.q.points[pi].v*sc*.5});
+  return Math.round(g*2)/2;
+}
+
+/* ================== 右侧评分区 ================== */
+function renderScore(){
+  const it=sheets[cur].qs[curQ],q=it.q,el=document.getElementById("sbody");
+  if(tabMode==="s"){
+    el.className="sbody std";
+    el.innerHTML=q.points.map((p,pi)=>`<div class="it"><span class="sc">+${Math.round(p.v*CFG.full/it.base*10)/10}</span>
+      <div class="k">${pi+1}. ${p.s}</div><div class="v">${p.ok}</div></div>`).join("")
+      +`<div style="font-size:11.5px;color:#9ca3af;margin-top:6px">评分细则：分步给分，累计不超过 ${CFG.full} 分；后续步骤依赖前错结果的，方法正确可给该步一半分。</div>`;
+    return;
+  }
+  el.className="sbody";
+  const got=sumScore(it);
+  let diffHtml="";
+  if(CFG.dual&&got!==null){
+    const d=Math.abs(got-it.second);
+    const warn=d>CFG.full*0.2;
+    diffHtml=`<div class="rt">二评 <b>${it.second}</b> 分<br><span class="diff ${warn?'warn':''}">差值 ${Math.round(d*10)/10}${warn?" ⚠ 需三评":""}</span></div>`;
+  }else{
+    diffHtml=`<div class="rt">本题满分 <b>${CFG.full}</b><br>共 ${q.points.length} 个得分点</div>`;
+  }
+  let h=`<div class="head"><div class="big">${got===null?"—":got}<small> / ${CFG.full}</small></div>${diffHtml}</div>`;
+  q.points.forEach((p,pi)=>{
+    const m=it.marks[pi];
+    h+=`<div class="pt ${pi===curP?'cur':''}" data-p="${pi}">
+      <div class="t"><span>得分点 ${pi+1} / ${q.points.length}</span><span class="fv">${Math.round(p.v*CFG.full/it.base*10)/10} 分</span></div>
+      <div class="d">${p.s}</div>
+      <div class="ms">
+        <button class="f ${m==='full'?'on':''}" onclick="setM(${pi},'full')">给分</button>
+        <button class="h ${m==='part'?'on':''}" onclick="setM(${pi},'part')">一半</button>
+        <button class="z ${m==='none'?'on':''}" onclick="setM(${pi},'none')">不给</button>
+      </div>
+      <div class="ans">参考：<em>${p.ok}</em></div>
+    </div>`;
+  });
+  el.innerHTML=h;
+}
+function setM(pi,val){
+  const it=sheets[cur].qs[curQ];
+  it.marks[pi]=it.marks[pi]===val?null:val;
+  curP=pi;
+  renderSheet();renderScore();updateTask();
+  const nx=it.marks.findIndex((m,i)=>i>pi&&m===null);
+  if(nx>=0){curP=nx;renderScore()}
+}
+function tab(t,el){tabMode=t;[...document.querySelectorAll(".tabs button")].forEach(b=>b.classList.remove("on"));el.classList.add("on");renderScore()}
+
+/* ================== 左侧信息 ================== */
+function renderMeta(){
+  const sh=sheets[cur];
+  document.getElementById("meta").innerHTML=`
+    <div class="stu"><div class="av">👤</div><div class="nm">${sh.stu}</div><div class="id">考号 ${sh.sid}</div></div>
+    <div class="hd">考生信息</div>
+    <div class="kv"><span>班级</span><b>${sh.cls}</b></div>
+    <div class="kv"><span>座位号</span><b>${sh.seat}</b></div>
+    <div class="kv"><span>科目</span><b>数学（七上）</b></div>
+    <div class="hd" style="margin-top:14px">本份进度</div>
+    <div class="kv"><span>批改题号</span><b>第 ${CFG.qno} 题</b></div>
+    <div class="kv"><span>当前题</span><b>${curQ+1} / ${sh.qs.length}</b></div>
+    <div class="kv"><span>已给分</span><b>${sh.qs.reduce((a,q)=>a+(sumScore(q)??0),0)}</b></div>
+    <div class="kv"><span>本份满分</span><b>${CFG.full*sh.qs.length}</b></div>
+    <div class="flag">
+      <button class="${sh.hard?'on':''}" onclick="markHard()">🚩 疑难卷</button>
+      <button onclick="toast('已调出该生其他题目（模拟）')">📄 查看整卷</button>
+    </div>`;
+}
+
+/* ================== 任务条 / 顶栏 ================== */
+function updateTask(){
+  const done=sheets.filter(s=>s.done).length;
+  document.getElementById("tbDone").textContent=done;
+  document.getElementById("tbTot").textContent=sheets.length;
+  document.getElementById("tbLeft").textContent=sheets.length-done;
+  document.getElementById("tbBar").style.width=(done/sheets.length*100)+"%";
+  document.getElementById("tQno").textContent=sheets[cur]?sheets[cur].qs[curQ].q.no:"—";
+  document.getElementById("tFull").textContent=CFG.full;
+  const m=document.getElementById("tbMode");
+  m.textContent=CFG.dual?"双评":"单评";m.className="mode"+(CFG.dual?" dual":"");
+  document.getElementById("tip").textContent=`扫描切图 · 第 ${cur+1} 份 · 第 ${sheets[cur].qs[curQ].q.no} 题`;
+}
+
+/* ================== 翻页 ================== */
+function refresh(){renderMeta();renderSheet();renderScore();updateTask();fitCanvas()}
+function submit(){
+  const sh=sheets[cur];
+  const undone=sh.qs.some(q=>q.marks.some(m=>m===null));
+  if(undone){toast("还有得分点未给分",true);const qi=sh.qs.findIndex(q=>q.marks.some(m=>m===null));curQ=qi;curP=sh.qs[qi].marks.findIndex(m=>m===null);refresh();return}
+  if(CFG.dual){
+    const over=sh.qs.some(q=>Math.abs(sumScore(q)-q.second)>CFG.full*.2);
+    if(over)toast("差值超限，该题已送三评仲裁",true);
+  }
+  sh.done=true;
+  if(cur>=sheets.length-1){finish();return}
+  cur++;curQ=0;curP=0;refresh();
+}
+function prev(){if(cur>0){cur--;curQ=0;curP=0;refresh()}else toast("已是第一份")}
+function markHard(){const s=sheets[cur];s.hard=!s.hard;renderMeta();toast(s.hard?"已标记为疑难卷":"已取消疑难标记")}
+
+document.addEventListener("keydown",e=>{
+  if(getComputedStyle(document.getElementById("grading")).display==="none")return;
+  const sh=sheets[cur],it=sh.qs[curQ];
+  if(e.key==="1"){setM(curP,"full");e.preventDefault()}
+  else if(e.key==="2"){setM(curP,"part");e.preventDefault()}
+  else if(e.key==="3"){setM(curP,"none");e.preventDefault()}
+  else if(e.key==="ArrowDown"){curP=Math.min(it.q.points.length-1,curP+1);renderScore();e.preventDefault()}
+  else if(e.key==="ArrowUp"){curP=Math.max(0,curP-1);renderScore();e.preventDefault()}
+  else if(e.key==="ArrowRight"){if(curQ<sh.qs.length-1){curQ++;curP=0;refresh()}else submit();e.preventDefault()}
+  else if(e.key==="ArrowLeft"){if(curQ>0){curQ--;curP=0;refresh()}else prev();e.preventDefault()}
+  else if(e.key==="Enter"){submit();e.preventDefault()}
+  else if(e.key==="a"||e.key==="A"){const b=document.querySelectorAll(".tabs button");tab(tabMode==="p"?"s":"p",b[tabMode==="p"?1:0]);e.preventDefault()}
+});
+
+/* ================== 流程 ================== */
+function start(){
+  gen();cur=0;curQ=0;curP=0;tabMode="p";t0=Date.now();
+  document.getElementById("setup").style.display="none";
+  document.getElementById("grading").style.display="block";
+  timer=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);document.getElementById("clock").textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")},1000);
+  initPen();fitCanvas();
+  refresh();toast(`已派发 ${CFG.count} 份第 ${CFG.qno} 题试卷 · 可用红笔直接在卷面批注`);
+}
+function finish(){
+  clearInterval(timer);
+  document.getElementById("grading").style.display="none";
+  document.getElementById("result").style.display="block";
+  const secs=Math.round((Date.now()-t0)/1000);
+  const q=BANK.find(x=>x.no===CFG.qno);
+  let my=0,std=0,arbi=0,rows="",hard=0;
+  const dist={};
+  sheets.forEach(sh=>{
+    sh.qs.forEach(it=>{
+      const g=sumScore(it)??0;my+=g;std+=it.stdScore;
+      dist[g]=(dist[g]||0)+1;
+      const d=Math.round((g-it.stdScore)*10)/10;
+      let st='<span class="tag g">一致</span>';
+      if(CFG.dual){if(Math.abs(g-it.second)>CFG.full*.2){arbi++;st='<span class="tag w">三评</span>'}else st='<span class="tag">正常</span>'}
+      if(sh.hard)hard++;
+      rows+=`<tr><td>${sh.stu}</td><td>${sh.cls}</td><td class="n">${g}</td><td class="n">${it.stdScore}</td>
+        <td class="n" style="color:${d>0?'#b45309':d<0?'#1d4ed8':'#6b7280'}">${d>0?"+":""}${d}</td>
+        <td>${it.second??"—"}</td><td>${st}</td></tr>`;
+    });
+  });
+  const n=sheets.length;
+  const bias=(my-std)/n;
+  document.getElementById("rBody").innerHTML=rows;
+  document.getElementById("rSub").textContent=`第 ${CFG.qno} 题 · ${q?q.topic:""} · 共批 ${sheets.length} 份 · 用时 ${Math.floor(secs/60)} 分 ${secs%60} 秒 · 满分 ${CFG.full} 分`;
+  // 得分分布
+  const maxCnt=Math.max(1,...Object.values(dist));
+  document.getElementById("rDist").innerHTML=Object.keys(dist).map(k=>Number(k)).sort((a,b)=>a-b).map(s=>
+    `<div class="drow"><span class="dl">${s} 分</span><div class="dbar"><i style="width:${dist[s]/maxCnt*100}%"></i></div><span class="dc">${dist[s]} 人</span></div>`
+  ).join("");
+  document.getElementById("rMetrics").innerHTML=[
+    ["平均给分",(my/n).toFixed(1)],
+    ["标准均分",(std/n).toFixed(1)],
+    ["平均偏差",(bias>0?"+":"")+bias.toFixed(2)],
+    ["每题耗时",(secs/n).toFixed(1)+"s"],
+    ["送三评",arbi+" 题"],
+  ].map(([l,v])=>`<div><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+  let verdict;
+  if(Math.abs(bias)<0.3)verdict=`<b>评分尺度准确</b>：与标准分平均偏差 ${(bias>0?"+":"")+bias.toFixed(2)} 分，属于合格评卷员。`;
+  else if(bias>0)verdict=`<b>偏松（慈师）</b>：平均每题多给 ${bias.toFixed(2)} 分。注意"一半分"只用于方法正确但结果算错的情形。`;
+  else verdict=`<b>偏严（严师）</b>：平均每题少给 ${Math.abs(bias).toFixed(2)} 分。检查是否漏给了"仅计算失误但方法正确"的步骤分。`;
+  if(CFG.dual)verdict+=` 本次触发三评仲裁 <b>${arbi}</b> 题${arbi>n*0.15?"（比例偏高，建议复核评分标准）":"。"}`;
+  if(hard)verdict+=` 标记疑难卷 <b>${hard}</b> 份。`;
+  document.getElementById("rVerdict").innerHTML=verdict;
+}
+function back(){document.getElementById("result").style.display="none";document.getElementById("setup").style.display="block"}
+
+let tt;function toast(m,w){const t=document.getElementById("toast");t.textContent=m;t.className="toast show"+(w?" warn":"");clearTimeout(tt);tt=setTimeout(()=>t.className="toast",2000)}
+</script>
+</body>
+</html>
