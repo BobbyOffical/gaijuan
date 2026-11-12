@@ -87,10 +87,7 @@ input[type=number]{width:100%;padding:8px 10px;border:1.5px solid var(--line);bo
 .wl .step{display:block;position:relative;padding-left:2px}
 .wl .step:nth-child(odd){transform:rotate(-.15deg)}
 .wl .step:nth-child(even){transform:rotate(.2deg)}
-.wl .cross{text-decoration:line-through;text-decoration-thickness:2px;opacity:.55}
-.wl .blot{display:inline-block;width:14px;height:8px;background:#1e3a8a;border-radius:50%;opacity:.5;vertical-align:middle;margin:0 3px}
 .wl .empty{color:#9ca3af;font-size:16px}
-.wl .scribble{background:#fde68a;padding:0 5px;border-radius:3px;color:#78350f}
 
 .score{background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column}
 .tabs{display:flex;border-bottom:1px solid var(--line)}
@@ -460,10 +457,7 @@ function renderSheet(){
     const ok=it.correct[pi];
     const txt=ok?p.ok:p.bad;
     if(!ok&&pi===q.points.length-1&&Math.random()<.3){h+=`<span class="step"><span class="empty">（此处未作答）</span></span>`;return}
-    if(!ok&&Math.random()<.35){h+=`<span class="step"><span class="cross">${p.ok}</span></span>`}
-    else if(Math.random()<.1){h+=`<span class="step"><span class="scribble">${txt}</span></span>`}
-    else{h+=`<span class="step">${txt}${pi<q.points.length-1?" ……":""}</span>`}
-    if(Math.random()<.06)h+=`<span class="blot"></span>`;
+    h+=`<span class="step">${txt}${pi<q.points.length-1?" ……":""}</span>`;
   });
   if(it.correct[q.points.length-1]&&Math.random()<.5)h+=`<span class="step">答：${q.points[q.points.length-1].ok}</span>`;
   h+=`</div></div>`;
